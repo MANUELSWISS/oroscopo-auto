@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oroscopo Italiano</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* FONDO TRANSPARENTE PARA SUPERPOSICIÓN */
+        body {
+            background: transparent !important;
+            color: #fff;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        /* CONTENEDOR PRINCIPAL QUE SE ADAPTA AL TAMAÑO DE PDS */
+        .container {
+            position: absolute;
+            top: 3%;
+            left: 3%;
+            width: 94%;
+            height: 94%;
+            background: transparent;
+            border-radius: 25px;
+            padding: 2%;
+            backdrop-filter: blur(15px) brightness(0.9);
+            border: 3px solid rgba(230, 195, 0, 0.4);
+            box-shadow: 0 0 40px rgba(230, 195, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(20, 20, 40, 0.3);
+            border-radius: 25px;
+            z-index: -1;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5%;
+            padding-bottom: 1%;
+            border-bottom: 2px solid rgba(230, 195, 0, 0.4);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .zodiac-icon {
+            font-size: 3.5vw;
+            margin-right: 2%;
+            animation: float 3s ease-in-out infinite;
+            text-shadow: 0 0 25px rgba(230, 195, 0, 0.9);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .zodiac-info {
+            text-align: center;
+        }
+
+        .zodiac-name {
+            font-size: 3vw;
+            color: #e6c300;
+            text-shadow: 0 0 30px rgba(230, 195, 0, 0.9);
+            font-weight: bold;
+            margin-bottom: 0.5%;
+        }
+
+        .zodiac-dates {
+            font-size: 1.5vw;
+            color: #e6e6e6;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+        }
+
+        .date-display {
+            font-size: 1vw;
+            color: #aaa;
+            margin-top: 0.5%;
+        }
+
+        .api-status {
+            font-size: 0.8vw;
+            color: #e6c300;
+            margin-top: 0.5%;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5%;
+            flex: 1;
+            margin-bottom: 1.5%;
+            align-items: stretch;
+        }
+
+        .left-column, .right-column {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .section {
+            margin-bottom: 1.5%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .section h3 {
+            color: #e6c300;
+            font-size: 1.7vw;
+            font-weight: bold;
+            margin-bottom: 1%;
+            border-left: 4px solid #e6c300;
+            padding-left: 1.5%;
+            text-shadow: 0 0 15px rgba(230, 195, 0, 0.7);
+            flex-shrink: 0;
+        }
+
+        .section p {
+            font-size: 1.1vw;
+            line-height: 1.5;
+            color: #ffffff;
+            font-weight: 600;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+            background: rgba(255, 255, 255, 0.08);
+            padding: 3%;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .section.previsione p {
+            overflow-y: hidden;
+        }
+
+        .section.fortuna p {
+            overflow-y: hidden;
+            line-height: 1.3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .progress-container {
+            margin-top: auto;
+            padding-top: 1%;
+            border-top: 2px solid rgba(230, 195, 0, 0.4);
+            flex-shrink: 0;
+            min-height: 4vh;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 0.6vh;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1%;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #e6c300, #ffd700);
+            width: 0%;
+            transition: width 10s linear;
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(230, 195, 0, 0.8);
+        }
+
+        .indicators {
+            display: flex;
+            justify-content: center;
+            gap: 0.8%;
+            flex-wrap: wrap;
+        }
+
+        .indicator {
+            width: 0.8vw;
+            height: 0.8vw;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .indicator.active {
+            background: #e6c300;
+            transform: scale(1.2);
+            box-shadow: 0 0 15px rgba(230, 195, 0, 0.9);
+        }
+
+        .loading {
+            text-align: center;
+            color: #e6c300;
+            font-size: 1.8vw;
+            padding: 4%;
+        }
+
+        .error {
+            text-align: center;
+            color: #ff6b6b;
+            font-size: 1.3vw;
+            padding: 2%;
+            background: rgba(255, 107, 107, 0.08);
+            border-radius: 12px;
+            margin: 1.5% 0;
+        }
+
+        .section p::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .section p::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+        }
+
+        .section p::-webkit-scrollbar-thumb {
+            background: #e6c300;
+            border-radius: 3px;
+        }
+
+        * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* RESPONSIVE PARA DIFERENTES TAMAÑOS */
+        @media (max-width: 1200px) {
+            .zodiac-icon { font-size: 4.5vw; }
+            .zodiac-name { font-size: 3.5vw; }
+            .zodiac-dates { font-size: 2vw; }
+            .section h3 { font-size: 2.2vw; }
+            .section p { font-size: 1.4vw; }
+            .indicator { width: 1vw; height: 1vw; }
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+                gap: 1.5%;
+            }
+            .zodiac-icon { font-size: 7vw; }
+            .zodiac-name { font-size: 5vw; }
+            .zodiac-dates { font-size: 3vw; }
+            .section h3 { font-size: 3.5vw; }
+            .section p { font-size: 2.2vw; }
+            .container {
+                top: 1%;
+                left: 1%;
+                width: 98%;
+                height: 98%;
+            }
+            .indicator { width: 1.5vw; height: 1.5vw; }
+        }
+    </style>
+</head>
+<body>
+    <!-- SOLO LA INTERFAZ - SIN VIDEO -->
+    <div class="container" id="container">
+        <div class="loading" id="loading">
+            📡 Inizializzazione sistema oroscopi...
+        </div>
+    </div>
+
+    <script>
+        // CÓDIGO JAVASCRIPT ORIGINAL (SIN CALENDARIO)
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔮 Sistema horóscopos iniciado en modo responsive');
+            initializeDigitalSignage();
+        });
+
+        const signMap = {
+            "aries": "aries", "taurus": "taurus", "gemini": "gemini",
+            "cancer": "cancer", "leo": "leo", "virgo": "virgo",
+            "libra": "libra", "scorpio": "scorpio", "sagittarius": "sagittarius",
+            "capricorn": "capricorn", "aquarius": "aquarius", "pisces": "pisces"
+        };
+
+        const zodiacBaseData = {
+            "aries": { name: "Ariete", dates: "21 marzo - 19 aprile", icon: "♈" },
+            "taurus": { name: "Toro", dates: "20 aprile - 20 maggio", icon: "♉" },
+            "gemini": { name: "Gemelli", dates: "21 maggio - 20 giugno", icon: "♊" },
+            "cancer": { name: "Cancro", dates: "21 giugno - 22 luglio", icon: "♋" },
+            "leo": { name: "Leone", dates: "23 luglio - 22 agosto", icon: "♌" },
+            "virgo": { name: "Vergine", dates: "23 agosto - 22 settembre", icon: "♍" },
+            "libra": { name: "Bilancia", dates: "23 settembre - 22 ottobre", icon: "♎" },
+            "scorpio": { name: "Scorpione", dates: "23 ottobre - 21 novembre", icon: "♏" },
+            "sagittarius": { name: "Sagittario", dates: "22 novembre - 21 dicembre", icon: "♐" },
+            "capricorn": { name: "Capricorno", dates: "22 dicembre - 19 gennaio", icon: "♑" },
+            "aquarius": { name: "Acquario", dates: "20 gennaio - 18 febbraio", icon: "♒" },
+            "pisces": { name: "Pesci", dates: "19 febbraio - 20 marzo", icon: "♓" }
+        };
+
+        let horoscopeCache = {};
+        let currentDate = new Date().toDateString();
+        let newDayDetected = false;
+
+        function getItalianDate() {
+            const oggi = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return oggi.toLocaleDateString('it-IT', options);
+        }
+
+        function checkForNewDay() {
+            const today = new Date().toDateString();
+            if (today !== currentDate) {
+                console.log('🆕 Nuovo giorno rilevato! Pulizia cache...');
+                horoscopeCache = {};
+                currentDate = today;
+                newDayDetected = true;
+                showNewDayNotification();
+                return true;
+            }
+            newDayDetected = false;
+            return false;
+        }
+
+        function showNewDayNotification() {
+            setTimeout(() => {
+                const apiStatus = document.querySelector('.api-status');
+                if (apiStatus) {
+                    const notification = document.createElement('div');
+                    notification.className = 'new-day-notification';
+                    notification.textContent = '🔄 Oroscopo aggiornato per il nuovo giorno';
+                    apiStatus.parentNode.insertBefore(notification, apiStatus.nextSibling);
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 10000);
+                }
+            }, 1000);
+        }
+
+        async function fetchHoroscopeFromAPI(sign) {
+            const englishSign = signMap[sign];
+            if (!englishSign) {
+                throw new Error(`Segno non supportato: ${sign}`);
+            }
+
+            const apiEndpoints = [
+                `https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=${englishSign}&day=TODAY`,
+                `https://api.adderou.re/tyler/horoscopes`,
+            ];
+
+            let lastError = null;
+            for (const endpoint of apiEndpoints) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+                    return processAPIResponse(data, englishSign);
+                } catch (error) {
+                    console.warn(`API fallita: ${endpoint}`, error);
+                    lastError = error;
+                    continue;
+                }
+            }
+            throw lastError || new Error('Tutte le API hanno fallito');
+        }
+
+        function processAPIResponse(data, sign) {
+            if (data.data && data.data.horoscope_data) {
+                return {
+                    description: data.data.horoscope_data,
+                    detailed: generateDetailedHoroscope(sign)
+                };
+            } else if (data.horoscope) {
+                return {
+                    description: data.horoscope,
+                    detailed: generateDetailedHoroscope(sign)
+                };
+            } else if (data[sign] && data[sign].horoscope) {
+                return {
+                    description: data[sign].horoscope,
+                    detailed: generateDetailedHoroscope(sign)
+                };
+            } else {
+                return getFallbackHoroscope(sign);
+            }
+        }
+
+        function generateDetailedHoroscope(sign) {
+            const luckyNumbers = generateLuckyNumbers();
+            const luckyColors = ["rosso", "oro", "blu", "verde", "viola", "argento"];
+            return {
+                amore: generateLoveHoroscope(sign),
+                lavoro: generateWorkHoroscope(sign),
+                salute: generateHealthHoroscope(sign),
+                fortuna: `Numero fortunato: ${luckyNumbers.join(', ')}. Colore: ${luckyColors[Math.floor(Math.random() * luckyColors.length)]}. ${generateLuckAdvice(sign)}`
+            };
+        }
+
+        function generateLuckyNumbers() {
+            const numbers = new Set();
+            while (numbers.size < 3) {
+                numbers.add(Math.floor(Math.random() * 12) + 1);
+            }
+            return Array.from(numbers);
+        }
+
+        function generateLoveHoroscope(sign) {
+            const loveAdvices = {
+                aries: "La passione è alta oggi. Per i single, possibilità di incontri spontanei. Le coppie: momento di complicità.",
+                taurus: "Giornata di stabilità emotiva. Ideale per progetti comuni e rafforzare i legami esistenti.",
+                gemini: "Comunicazione aperta porta a momenti romantici. Socializzare può riservare belle sorprese.",
+                cancer: "Sensibilità accentuata. Momento per coccole e attenzioni particolari con il partner.",
+                leo: "Romanticismo e creatività in primo piano. Ideale per uscite speciali e dichiarazioni.",
+                virgo: "Attenzione ai dettagli che contano. Piccoli gesti possono fare la differenza oggi.",
+                libra: "Armonia e equilibrio nelle relazioni. Buon momento per risolvere discussioni passate.",
+                scorpio: "Intensità emotiva forte. Momento di profondità e connessioni autentiche.",
+                sagittarius: "Avventura e spontaneità in amore. Le sorprese sono dietro l'angolo.",
+                capricorn: "Stabilità e impegno premiano. Le relazioni serie si consolidano.",
+                aquarius: "Originalità nei sentimenti. Modi non convenzionali di esprimere affetto.",
+                pisces: "Sogni e romanticismo. Giornata poetica per i sentimenti."
+            };
+            return loveAdvices[sign] || loveAdvices.aries;
+        }
+
+        function generateWorkHoroscope(sign) {
+            const workAdvices = {
+                aries: "Energia e iniziativa al massimo. Ideale per lanciare nuovi progetti.",
+                taurus: "Perseveranza premiata. I progetti a lungo termine danno frutti.",
+                gemini: "Comunicazione efficace. Riunioni e colaborazioni molto produttive.",
+                cancer: "Intuizione utile nel problem solving. Fidati del tuo istinto.",
+                leo: "Creatività e leadership riconosciute. Momento di visibilità.",
+                virgo: "Organizzazione e precisione danno risultati eccellenti.",
+                libra: "Diplomazia e lavoro di squadra risolvono situazioni complesse.",
+                scorpio: "Determinazione e focus su obiettivi importanti.",
+                sagittarius: "Nuove opportunità in arrivo. Aprire la mente a possibilità.",
+                capricorn: "Pianificazione strategica dà risultati duraturi.",
+                aquarius: "Innovazione e idee originali apprezzate dai colleghi.",
+                pisces: "Creatività e sensibilità utili in progetti artistici."
+            };
+            return workAdvices[sign] || workAdvices.aries;
+        }
+
+        function generateHealthHoroscope(sign) {
+            const healthAdvices = {
+                aries: "Energia fisica alta. Attività sportiva consigliata per scaricare lo stress.",
+                taurus: "Benessere generale buono. Attenzione all'alimentazione e digestione.",
+                gemini: "Equilibrio mentale importante. Praticare tecniche di rilassamento.",
+                cancer: "Sensibilità emotiva. Cercare ambienti tranquilli e rilassanti.",
+                leo: "Vitalità eccellente. Approfittarne per attività all'aperto.",
+                virgo: "Attenzione ai dettagli anche per la salute. Check-up utili.",
+                libra: "Equilibrio corpo-mente. Attività armoniose come yoga.",
+                scorpio: "Energia intensa. Canalizzarla in attività costruttive.",
+                sagittarius: "Ottimismo che aiuta el sistema immunitario. Mantenere attivo.",
+                capricorn: "Resistenza fisica buona. Attenzione alle articolaciones.",
+                aquarius: "Salute mentale prioritaria. Socializzare fa bene.",
+                pisces: "Sensibilità accentuata. Evitare situazioni troppo stressanti."
+            };
+            return healthAdvices[sign] || healthAdvices.aries;
+        }
+
+        function generateLuckAdvice(sign) {
+            const luckAdvices = [
+                "Momento favorevole per decisioni importanti.",
+                "Le opportunità si presentano quando meno te lo aspetti.",
+                "Fidati del tuo intuito oggi, ti guiderà bene.",
+                "Giorno propizio per nuovi inizi e cambiamenti.",
+                "La fortuna sorride agli audaci, cogli le occasioni.",
+                "Momento di crescita personale e profesional."
+            ];
+            return luckAdvices[Math.floor(Math.random() * luckAdvices.length)];
+        }
+
+        function getFallbackHoroscope(sign) {
+            const fallbacks = {
+                aries: { description: "Oggi l'Ariete si sentirà particolarmente energico e determinato. È un giorno favorevole per prendere iniziative importanti e seguire i propri obiettivi con coraggio.", detailed: generateDetailedHoroscope(sign) },
+                taurus: { description: "Il Toro oggi trova stabilità e concretezza. Momento ideale per consolidare progetti e godere dei risultati del trabajo svolto.", detailed: generateDetailedHoroscope(sign) },
+                gemini: { description: "I Gemelli oggi sono particolarmente comunicativi. Ideale per socializzare, apprendere e condividere idee innovative.", detailed: generateDetailedHoroscope(sign) },
+                cancer: { description: "Il Cancro oggi sente forte la connessione con le emozioni. Momento per prendersi cura di sé e dei propri cari.", detailed: generateDetailedHoroscope(sign) },
+                leo: { description: "Il Leone oggi brilla di luce propria. Creatività e carisma ai massimi livelli, ideale per progetti artistici.", detailed: generateDetailedHoroscope(sign) },
+                virgo: { description: "La Vergine oggi trova soddisfazione nell'ordine e precisione. Attenzione ai dettagli che porta a risultati eccellenti.", detailed: generateDetailedHoroscope(sign) },
+                libra: { description: "La Bilancia oggi cerca e trova armonia. Momento favorevole per mediazioni e creare bellezza nell'ambiente.", detailed: generateDetailedHoroscope(sign) },
+                scorpio: { description: "Lo Scorpione oggi ha una visione profonda. Intuizione forte per scoprire verità nascoste e trasformare situazioni.", detailed: generateDetailedHoroscope(sign) },
+                sagittarius: { description: "Il Sagittario oggi cerca avventura e conoscenza. Ideale per viaggi, studio ed esplorare nuove filosofie.", detailed: generateDetailedHoroscope(sign) },
+                capricorn: { description: "Il Capricorno oggi vede i frutti della perseveranza. Successi professionali e riconoscimenti per el trabajo svolto.", detailed: generateDetailedHoroscope(sign) },
+                aquarius: { description: "L'Acquario oggi è innovativo e originale. Idee rivoluzionarie e visioni del futuro si manifestano claramente.", detailed: generateDetailedHoroscope(sign) },
+                pisces: { description: "I Pesci oggi sono particolarmente creativi e sensibili. Momento per esprimere emozioni attraverso l'arte e la musica.", detailed: generateDetailedHoroscope(sign) }
+            };
+            return fallbacks[sign] || fallbacks.aries;
+        }
+
+        async function getHoroscope(sign) {
+            const isNewDay = checkForNewDay();
+            if (isNewDay || !horoscopeCache[sign]) {
+                try {
+                    const apiData = await fetchHoroscopeFromAPI(sign);
+                    horoscopeCache[sign] = apiData;
+                    return apiData;
+                } catch (error) {
+                    console.error('Error fetching horoscope:', error);
+                    return getFallbackHoroscope(sign);
+                }
+            }
+            return horoscopeCache[sign];
+        }
+
+        let currentSlide = 0;
+        let autoPlayInterval;
+        let progressTimeout;
+        const slideDuration = 15000;
+
+        async function initializeDigitalSignage() {
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+            document.addEventListener('dragstart', (e) => e.preventDefault());
+
+            document.getElementById('container').innerHTML = `
+                <div class="loading" id="loading">
+                    📡 Inizializzazione sistema oroscopi...
+                </div>
+            `;
+
+            await updateContent('aries');
+            startAutoPlay();
+            createIndicators();
+            
+            setInterval(() => {
+                checkForNewDay();
+            }, 60 * 1000);
+
+            window.addEventListener('online', () => {
+                console.log('Connessione ripristinata');
+                horoscopeCache = {};
+            });
+
+            window.addEventListener('offline', () => {
+                console.log('Connessione persa - usando dati in cache');
+            });
+        }
+
+        async function updateContent(sign) {
+            const baseData = zodiacBaseData[sign];
+            try {
+                const horoscopeData = await getHoroscope(sign);
+                const statusText = newDayDetected ? 
+                    '🔄 Oroscopo del nuovo giorno caricato' : 
+                    '✅ Oroscopo aggiornato in tempo reale';
+
+                document.getElementById('container').innerHTML = `
+                    <div class="header">
+                        <div class="zodiac-icon">${baseData.icon}</div>
+                        <div class="zodiac-info">
+                            <div class="zodiac-name">${baseData.name}</div>
+                            <div class="zodiac-dates">${baseData.dates}</div>
+                            <div class="date-display">${getItalianDate()}</div>
+                            <div class="api-status">${statusText}</div>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <div class="left-column">
+                            <div class="section previsione">
+                                <h3>Previsione Generale</h3>
+                                <p>${horoscopeData.description}</p>
+                            </div>
+                            <div class="section">
+                                <h3>Amore</h3>
+                                <p>${horoscopeData.detailed.amore}</p>
+                            </div>
+                        </div>
+                        <div class="right-column">
+                            <div class="section">
+                                <h3>Lavoro</h3>
+                                <p>${horoscopeData.detailed.lavoro}</p>
+                            </div>
+                            <div class="section fortuna">
+                                <h3>Salute & Fortuna</h3>
+                                <p><strong>Salute:</strong> ${horoscopeData.detailed.salute}<br><strong>Fortuna:</strong> ${horoscopeData.detailed.fortuna}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress" id="progress"></div>
+                        </div>
+                        <div class="indicators" id="indicators"></div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('container').innerHTML = `
+                    <div class="error">
+                        ❌ Errore nel caricamento dell'oroscopo<br>
+                        <small>${error.message}</small>
+                        <br><br>
+                        <button onclick="location.reload()" style="padding: 10px 20px; background: #e6c300; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+                            Ricarica
+                        </button>
+                    </div>
+                `;
+            }
+            startProgressBar();
+            createIndicators();
+            newDayDetected = false;
+        }
+
+        function createIndicators() {
+            const indicatorsContainer = document.getElementById('indicators');
+            if (!indicatorsContainer) return;
+            indicatorsContainer.innerHTML = '';
+            Object.keys(zodiacBaseData).forEach((sign, index) => {
+                const indicator = document.createElement('div');
+                indicator.className = `indicator ${index === currentSlide ? 'active' : ''}`;
+                indicator.addEventListener('click', () => goToSlide(index));
+                indicatorsContainer.appendChild(indicator);
+            });
+        }
+
+        function startAutoPlay() {
+            if (autoPlayInterval) clearInterval(autoPlayInterval);
+            autoPlayInterval = setInterval(() => {
+                nextSlide();
+            }, slideDuration);
+        }
+
+        function startProgressBar() {
+            const progress = document.getElementById('progress');
+            if (progress) {
+                if (progressTimeout) clearTimeout(progressTimeout);
+                progress.style.transition = 'none';
+                progress.style.width = '0%';
+                progress.offsetHeight;
+                progress.style.transition = `width ${slideDuration}ms linear`;
+                progress.style.width = '100%';
+                progressTimeout = setTimeout(() => {
+                    if (progress) {
+                        progress.style.transition = 'none';
+                        progress.style.width = '0%';
+                    }
+                }, slideDuration);
+            }
+        }
+
+        async function nextSlide() {
+            const signs = Object.keys(zodiacBaseData);
+            currentSlide = (currentSlide + 1) % signs.length;
+            const currentSign = signs[currentSlide];
+            await updateContent(currentSign);
+        }
+
+        async function goToSlide(index) {
+            currentSlide = index;
+            const signs = Object.keys(zodiacBaseData);
+            const currentSign = signs[currentSlide];
+            await updateContent(currentSign);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDigitalSignage();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F5' || e.key === 'F11' || (e.ctrlKey && e.key === 'r')) {
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('error', function(e) {
+            console.error('Errore non gestito:', e.error);
+        });
+    </script>
+</body>
+</html>
